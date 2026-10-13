@@ -1,6 +1,7 @@
 import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { writeKey } from "../adapters";
 import { describeError } from "../errors";
+import { fire } from "../fire";
 import type { FlowHost } from "../flow";
 import { connectionFromString, createClient } from "../flow";
 import type { PluginData } from "../state";
@@ -65,7 +66,7 @@ export class DmKitSettingTab extends PluginSettingTab {
 				button
 					.setButtonText(STRINGS.settings.connect)
 					.setCta()
-					.onClick(() => this.connect(pasted)),
+					.onClick(() => fire(this.connect(pasted))),
 			);
 	}
 
@@ -77,7 +78,7 @@ export class DmKitSettingTab extends PluginSettingTab {
 				button
 					.setButtonText(STRINGS.settings.disconnect)
 					.setWarning()
-					.onClick(() => this.disconnect()),
+					.onClick(() => fire(this.disconnect())),
 			);
 	}
 
@@ -148,7 +149,7 @@ export class DmKitSettingTab extends PluginSettingTab {
 					expanded.add(path);
 				}
 				this.data.expanded = [...expanded];
-				this.host.persist();
+				fire(this.host.persist());
 				this.renderTreeInto(holder, root);
 			},
 			onToggleChecked: (node, checked) => {
@@ -156,7 +157,7 @@ export class DmKitSettingTab extends PluginSettingTab {
 					node.type === "folder"
 						? setFolderSelected(this.data.selection, node.path, checked)
 						: setFileSelected(this.data.selection, node.path, checked);
-				this.host.persist();
+				fire(this.host.persist());
 				this.display();
 			},
 		});

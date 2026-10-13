@@ -4,12 +4,7 @@ import {
 	MAX_PUSH_FILES,
 	MAX_REMOVE_PATHS,
 } from "../contract/limits";
-import type {
-	FinishErrorCode,
-	PushFile,
-	PushRejectionCode,
-	SkipReason,
-} from "../contract/types";
+import type { FinishErrorCode, PushFile } from "../contract/types";
 import type { SyncClient } from "./client";
 import { byteLength, sha256Hex } from "./hash";
 import { buildManifest } from "./manifest";
@@ -45,10 +40,6 @@ const TRANSIENT_REJECTIONS: ReadonlySet<string> = new Set([
 	"allowance_exhausted",
 	"hash_mismatch",
 ]);
-const _TRANSIENT_REJECTIONS: ReadonlySet<string> = new Set([
-	"allowance_exhausted",
-	"hash_mismatch",
-]);
 
 interface PendingFile {
 	path: string;
@@ -67,10 +58,7 @@ function emptyOutcome(prepared: PreparedSync): SyncOutcome {
 		retried: 0,
 		removed: 0,
 		unchanged: prepared.plan.unchangedCount,
-		skipped: prepared.plan.skipped as Array<{
-			path: string;
-			reason: SkipReason;
-		}>,
+		skipped: prepared.plan.skipped,
 		rejected: [],
 		removalSkipped: false,
 		incomplete: false,
@@ -279,7 +267,7 @@ export class SyncRunner {
 			} else {
 				outcome.rejected.push({
 					path: result.path,
-					code: result.code as PushRejectionCode,
+					code: result.code,
 				});
 			}
 		}

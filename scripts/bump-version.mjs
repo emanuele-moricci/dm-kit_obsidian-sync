@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
@@ -8,8 +8,8 @@ function readJson(name) {
 	return JSON.parse(readFileSync(`${root}${name}`, "utf8"));
 }
 
-function writeJson(name, value) {
-	writeFileSync(`${root}${name}`, `${JSON.stringify(value, null, "\t")}\n`);
+function writeJson(name, value, indent = "\t") {
+	writeFileSync(`${root}${name}`, `${JSON.stringify(value, null, indent)}\n`);
 }
 
 const version = process.argv[2];
@@ -29,4 +29,11 @@ versions[version] = manifest.minAppVersion;
 writeJson("manifest.json", manifest);
 writeJson("versions.json", versions);
 writeJson("package.json", pkg);
-console.log(`Bumped DM Kit Sync to ${version}. Tag with obsidian-v${version}.`);
+
+if (existsSync(`${root}package-lock.json`)) {
+	const lock = readJson("package-lock.json");
+	lock.version = version;
+	lock.packages[""].version = version;
+	writeJson("package-lock.json", lock, 2);
+}
+console.log(`Bumped DM Kit Sync to ${version}.`);

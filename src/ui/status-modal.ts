@@ -1,6 +1,7 @@
 import { type App, Modal } from "obsidian";
 import type { StatusResponse } from "../contract/types";
 import { describeError } from "../errors";
+import { fire } from "../fire";
 import { STRINGS } from "../strings";
 import type { ClientResult } from "../sync/types";
 import { formatBytes, formatRelativeTime } from "./format";
@@ -14,7 +15,7 @@ export class StatusModal extends Modal {
 	}
 
 	onOpen() {
-		this.refresh();
+		fire(this.refresh());
 	}
 
 	onClose() {
@@ -42,7 +43,7 @@ export class StatusModal extends Modal {
 		const refresh = buttons.createEl("button", {
 			text: STRINGS.status.refresh,
 		});
-		refresh.addEventListener("click", () => this.refresh());
+		refresh.addEventListener("click", () => fire(this.refresh()));
 		const close = buttons.createEl("button", {
 			text: STRINGS.result.close,
 			cls: "mod-cta",

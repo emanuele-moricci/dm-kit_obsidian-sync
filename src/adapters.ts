@@ -1,4 +1,4 @@
-import { type App, requestUrl, type TFile } from "obsidian";
+import { type App, requestUrl, TFile } from "obsidian";
 import { SECRET_ID } from "./state";
 import type {
 	HttpRequest,
@@ -22,10 +22,10 @@ export function createVaultPort(app: App): VaultPort {
 				})),
 		read: async (path) => {
 			const file = app.vault.getAbstractFileByPath(path);
-			if (!(file && "extension" in file)) {
+			if (!(file instanceof TFile)) {
 				throw new Error("missing");
 			}
-			return await app.vault.read(file as TFile);
+			return await app.vault.read(file);
 		},
 	};
 }

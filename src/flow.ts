@@ -2,6 +2,7 @@ import { type App, Notice } from "obsidian";
 import { createVaultPort, readKey, transport } from "./adapters";
 import { parseConnectionString } from "./connection-string";
 import { describeError } from "./errors";
+import { fire } from "./fire";
 import type { LastSync, PluginData } from "./state";
 import { STRINGS } from "./strings";
 import { SyncClient } from "./sync/client";
@@ -54,9 +55,9 @@ class ReviewSession {
 		this.host = host;
 		this.runner = new SyncRunner({ client, vault: createVaultPort(host.app) });
 		this.modal = new SyncModal(host.app, {
-			onSync: (approve) => this.execute(approve),
-			onDismiss: () => this.dismiss(),
-			onRetry: () => this.start(),
+			onSync: (approve) => fire(this.execute(approve)),
+			onDismiss: () => fire(this.dismiss()),
+			onRetry: () => fire(this.start()),
 			onOpenSettings: () => {
 				this.modal.close();
 				host.openSettings();
@@ -66,7 +67,7 @@ class ReviewSession {
 
 	open() {
 		this.modal.open();
-		this.start();
+		fire(this.start());
 	}
 
 	private async dismiss() {
