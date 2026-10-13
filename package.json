@@ -1,0 +1,19 @@
+{
+  "name": "@dm-kit/obsidian-connector",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "version:bump": "node scripts/bump-version.mjs"
+  },
+  "version": "0.1.0",
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "obsidian": "1.14.4",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

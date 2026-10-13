@@ -1,0 +1,84 @@
+.dmk-sync-modal {
+	max-width: 36rem;
+}
+
+.dmk-sync-muted {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.dmk-sync-counts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2) var(--size-4-4);
+	padding: 0;
+	list-style: none;
+}
+
+.dmk-sync-group {
+	margin-block: var(--size-4-2);
+}
+
+.dmk-sync-group ul {
+	max-height: 10rem;
+	margin: var(--size-2-2) 0 0;
+	overflow-y: auto;
+}
+
+.dmk-sync-removal-band {
+	padding: var(--size-4-3);
+	margin-block: var(--size-4-3);
+	background: var(--background-modifier-error-hover);
+	border-left: 3px solid var(--text-error);
+	border-radius: var(--radius-s);
+}
+
+.dmk-sync-approve {
+	display: flex;
+	gap: var(--size-2-3);
+	align-items: center;
+	margin-top: var(--size-4-2);
+	cursor: pointer;
+}
+
+.dmk-sync-tree {
+	max-height: 24rem;
+	overflow-y: auto;
+}
+
+.dmk-sync-tree-list {
+	padding-left: var(--size-4-4);
+	margin: 0;
+	list-style: none;
+}
+
+.dmk-sync-tree > .dmk-sync-tree-list {
+	padding-left: var(--size-4-2);
+}
+
+.dmk-sync-tree-row {
+	display: flex;
+	gap: var(--size-2-3);
+	align-items: center;
+	min-height: var(--input-height);
+}
+
+.dmk-sync-tree-toggle {
+	flex: 0 0 var(--size-4-6);
+	height: var(--size-4-6);
+	padding: 0;
+	text-align: center;
+}
+
+.dmk-sync-tree-label {
+	display: flex;
+	flex: 1;
+	gap: var(--size-2-3);
+	align-items: center;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.dmk-sync-tree-weight {
+	flex: none;
+}
