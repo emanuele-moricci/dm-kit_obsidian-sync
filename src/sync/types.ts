@@ -106,9 +106,4 @@ export interface ExecuteProgress {
 	total: number;
 }
 
-export interface QuotaSnapshot {
-	limitBytes: number;
-	usedBytes: number;
-}
-
 export type StatusSnapshot = StatusResponse;

@@ -1,6 +1,6 @@
 import type { PlanResponse, SkipReason } from "../contract/types";
 import { STRINGS } from "../strings";
-import { formatBytes } from "./format";
+import { renderCapacity } from "./capacity";
 
 export interface PreviewActions {
 	onApproveChange: (approved: boolean) => void;
@@ -85,11 +85,8 @@ export function renderPreview(
 	if (plan.remove.length > 0) {
 		renderRemovalBand(parent, plan, actions);
 	}
-	parent.createEl("p", {
-		cls: "dmk-sync-muted",
-		text: `${STRINGS.preview.storage}: ${STRINGS.preview.storageValue(
-			formatBytes(plan.quota.afterBytes),
-			formatBytes(plan.quota.limitBytes),
-		)}`,
+	renderCapacity(parent, plan.quota, {
+		bytes: plan.quota.afterBytes,
+		notes: plan.quota.afterNotes,
 	});
 }

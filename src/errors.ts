@@ -60,6 +60,8 @@ export function describeError(error: DescribableError): DescribedError {
 			return error.details?.reason === "confirm_mass_required"
 				? { message: text.confirm_mass_required, action: "retry" }
 				: { message: text.invalid_request, action: "update_plugin" };
+		case "campaign_archived":
+			return { message: text.campaign_archived, action: "retry" };
 		case "run_conflict":
 		case "run_expired":
 		case "server_error":

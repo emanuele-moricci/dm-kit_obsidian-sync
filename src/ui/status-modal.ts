@@ -4,7 +4,8 @@ import { describeError } from "../errors";
 import { fire } from "../fire";
 import { STRINGS } from "../strings";
 import type { ClientResult } from "../sync/types";
-import { formatBytes, formatRelativeTime } from "./format";
+import { renderCapacity } from "./capacity";
+import { formatRelativeTime } from "./format";
 
 export class StatusModal extends Modal {
 	private readonly load: () => Promise<ClientResult<StatusResponse>>;
@@ -70,12 +71,9 @@ export class StatusModal extends Modal {
 		if (status.counts.error > 0) {
 			list.createEl("li", { text: STRINGS.status.failed(status.counts.error) });
 		}
-		contentEl.createEl("p", {
-			cls: "dmk-sync-muted",
-			text: `${STRINGS.status.storage}: ${STRINGS.preview.storageValue(
-				formatBytes(status.quota.usedBytes),
-				formatBytes(status.quota.limitBytes),
-			)}`,
+		renderCapacity(contentEl, status.quota, {
+			bytes: status.quota.usedBytes,
+			notes: status.quota.usedNotes,
 		});
 		if (status.lastError) {
 			const known =

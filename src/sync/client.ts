@@ -24,6 +24,7 @@ import type {
 const KNOWN_API_CODES: readonly ApiErrorCode[] = [
 	"unauthorized",
 	"forbidden",
+	"campaign_archived",
 	"run_conflict",
 	"run_expired",
 	"rate_limited",

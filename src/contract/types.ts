@@ -26,6 +26,7 @@ export type FinishErrorCode =
 export type ApiErrorCode =
 	| "unauthorized"
 	| "forbidden"
+	| "campaign_archived"
 	| "run_conflict"
 	| "run_expired"
 	| "rate_limited"
@@ -49,10 +50,16 @@ export interface SkippedEntry {
 	reason: SkipReason;
 }
 
+export type PlanTier = "free" | "pro";
+
 export interface Quota {
+	plan: PlanTier;
 	limitBytes: number;
 	usedBytes: number;
 	afterBytes: number;
+	limitNotes: number;
+	usedNotes: number;
+	afterNotes: number;
 }
 
 export interface PlanResponse {
@@ -113,7 +120,7 @@ export interface FinishResponse {
 }
 
 export interface StatusResponse {
-	quota: { limitBytes: number; usedBytes: number };
+	quota: Omit<Quota, "afterBytes" | "afterNotes">;
 	lastSyncAt: number | null;
 	lastError: { code: string; message?: string; at: number } | null;
 	counts: {

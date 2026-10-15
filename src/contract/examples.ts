@@ -26,7 +26,15 @@ export const PLAN_RESPONSE_EXAMPLE: PlanResponse = {
 	unchangedCount: 0,
 	skipped: [{ path: "Maps/big.md", reason: "too_large" }],
 	massRemove: false,
-	quota: { limitBytes: 100, usedBytes: 10, afterBytes: 34 },
+	quota: {
+		plan: "free",
+		limitBytes: 100,
+		usedBytes: 10,
+		afterBytes: 34,
+		limitNotes: 500,
+		usedNotes: 3,
+		afterNotes: 4,
+	},
 	campaign: { name: "Curse of Strahd" },
 	connection: { name: "Obsidian vault" },
 };
@@ -64,7 +72,13 @@ export const FINISH_REQUEST_EXAMPLE: FinishRequest = {
 };
 
 export const STATUS_RESPONSE_EXAMPLE: StatusResponse = {
-	quota: { limitBytes: 100, usedBytes: 40 },
+	quota: {
+		plan: "free",
+		limitBytes: 100,
+		usedBytes: 40,
+		limitNotes: 500,
+		usedNotes: 3,
+	},
 	lastSyncAt: 1_800_000_000_000,
 	lastError: null,
 	counts: { total: 3, processed: 1, processing: 1, error: 1 },

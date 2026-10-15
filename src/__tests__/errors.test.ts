@@ -13,6 +13,15 @@ describe("describeError", () => {
 		);
 	});
 
+	test("an archived campaign explains that syncing is paused", () => {
+		const described = describeError({
+			code: "campaign_archived",
+			status: 403,
+		});
+		expect(described.message).toContain("archived");
+		expect(described.action).toBe("retry");
+	});
+
 	test("upgrade names the minimum version", () => {
 		const described = describeError({
 			code: "upgrade_required",

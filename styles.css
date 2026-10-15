@@ -82,3 +82,19 @@
 .dmk-sync-tree-weight {
 	flex: none;
 }
+
+.dmk-sync-capacity {
+	height: 6px;
+	overflow: hidden;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+
+.dmk-sync-capacity-fill {
+	height: 100%;
+	background: var(--interactive-accent);
+}
+
+.dmk-sync-capacity.is-full .dmk-sync-capacity-fill {
+	background: var(--text-error);
+}

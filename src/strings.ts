@@ -54,19 +54,27 @@ export const STRINGS = {
 		removeExplain:
 			"These notes are no longer selected or were deleted from your vault.",
 		removeApprove: "I understand these notes will be removed from DM Kit",
-		storage: "DM Kit storage (account)",
-		storageValue: (after: string, limit: string) => `${after} of ${limit}`,
 		nothing: "Everything is already up to date.",
 		sync: "Sync now",
 		syncNothing: "Close",
 		cancel: "Cancel",
 	},
 
+	capacity: {
+		line: (
+			bytes: { used: string; limit: string },
+			notes: { used: number; limit: number },
+			plan: string,
+		) =>
+			`${bytes.used} of ${bytes.limit} · ${notes.used} of ${notes.limit} notes · ${plan}`,
+		plan: { free: "Free plan", pro: "Pro plan" },
+	},
+
 	skipReason: {
 		not_markdown: "Not a Markdown note",
 		empty: "Empty note",
 		too_large: "Larger than 2 MB",
-		quota: "Not enough DM Kit storage",
+		quota: "Over your DM Kit plan limits",
 		path_invalid: "Unsupported file path",
 		indexing: "Still being indexed in DM Kit",
 	},
@@ -115,7 +123,7 @@ export const STRINGS = {
 		hash_mismatch: "The note changed while syncing",
 		path_invalid: "Unsupported file path",
 		invalid_content: "The note couldn't be read or is empty",
-		allowance_exhausted: "Not enough DM Kit storage",
+		allowance_exhausted: "Over your DM Kit plan limits",
 		in_progress: "Still being indexed in DM Kit",
 		too_large: "Larger than 2 MB",
 	},
@@ -125,7 +133,6 @@ export const STRINGS = {
 		loading: "Loading…",
 		neverSynced: "Never synced",
 		lastSync: (when: string) => `Last sync ${when}`,
-		storage: "DM Kit storage (account)",
 		notes: (total: number) => `${total} notes in DM Kit`,
 		processing: (count: number) => `${count} being indexed`,
 		failed: (count: number) => `${count} failed to index`,
@@ -144,7 +151,7 @@ export const STRINGS = {
 	lastError: {
 		push_incomplete: "The last sync stopped before all notes were uploaded.",
 		remove_not_confirmed: "Removals from the last sync are waiting for you.",
-		quota: "Some notes didn't fit in your DM Kit storage.",
+		quota: "Some notes didn't fit in your DM Kit plan limits.",
 	},
 
 	notices: {
@@ -163,6 +170,8 @@ export const STRINGS = {
 			"DM Kit didn't accept this connection. It may have been disconnected or replaced. Paste a new connection string in settings.",
 		forbidden:
 			"This connection isn't allowed to sync. Create a new connection string in DM Kit.",
+		campaign_archived:
+			"This campaign is archived in DM Kit, so syncing is paused. Unarchive it in DM Kit or connect another campaign.",
 		run_conflict:
 			"Another sync is running for this connection, maybe from another device. Try again in a few minutes.",
 		run_expired: "The sync took too long and expired. Run it again.",
