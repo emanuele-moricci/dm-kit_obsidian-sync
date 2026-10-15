@@ -111,8 +111,14 @@ describe("normalizeData", () => {
 describe("format", () => {
 	test("bytes", () => {
 		expect(formatBytes(512)).toBe("512 B");
-		expect(formatBytes(1536)).toBe("1.5 KB");
-		expect(formatBytes(5 * 1024 * 1024)).toBe("5 MB");
+		expect(formatBytes(1500)).toBe("1.5 KB");
+		expect(formatBytes(5_000_000)).toBe("5 MB");
+	});
+
+	test("bytes match the decimal megabytes of the DM Kit plans", () => {
+		expect(formatBytes(10_000_000)).toBe("10 MB");
+		expect(formatBytes(50_000_000)).toBe("50 MB");
+		expect(formatBytes(464_000)).toBe("464 KB");
 	});
 
 	test("relative time", () => {

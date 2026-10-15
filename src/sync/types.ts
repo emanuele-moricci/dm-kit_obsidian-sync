@@ -87,7 +87,10 @@ export interface SyncOutcome {
 	removed: number;
 	unchanged: number;
 	skipped: Array<{ path: string; reason: SkipReason }>;
-	rejected: Array<{ path: string; code: PushRejectionCode | "too_large" }>;
+	rejected: Array<{
+		path: string;
+		code: PushRejectionCode | "too_large" | "upload_failed";
+	}>;
 	removalSkipped: boolean;
 	incomplete: boolean;
 	finishFailed: boolean;
@@ -101,9 +104,10 @@ export interface ExecuteOptions {
 }
 
 export interface ExecuteProgress {
-	phase: "push" | "remove" | "finish";
+	phase: "push" | "remove" | "finish" | "wait";
 	done: number;
 	total: number;
+	waitSeconds?: number;
 }
 
 export type StatusSnapshot = StatusResponse;

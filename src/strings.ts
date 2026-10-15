@@ -11,6 +11,9 @@ export const STRINGS = {
 			"Create a connection string in DM Kit, under Notes → Connections, and paste it here.",
 		connectionPlaceholder: "dmk1.…",
 		connect: "Connect",
+		connecting: "Connecting…",
+		sync: "Review & sync",
+		syncDesc: "Opens the review step for the notes you selected below.",
 		connected: "Connected to",
 		disconnect: "Disconnect",
 		disconnectDesc:
@@ -19,7 +22,20 @@ export const STRINGS = {
 		selectionDesc:
 			"Only checked notes are sent to DM Kit. Notes you uncheck later are removed from DM Kit after you review the sync.",
 		vaultTotal: "Vault",
-		selected: "selected",
+		summary: (
+			total: { notes: number; bytes: string },
+			selected: { notes: number; bytes: string },
+		) => {
+			const notes =
+				selected.notes > 0
+					? `${total.notes} (${selected.notes} selected)`
+					: `${total.notes}`;
+			const weight =
+				selected.notes > 0
+					? `${total.bytes} (${selected.bytes} selected)`
+					: total.bytes;
+			return `Total notes: ${notes} • Total weight: ${weight}`;
+		},
 		notConnected: "Not connected",
 		openDmKit: "Open DM Kit",
 		noNotes: "No Markdown notes found in this vault.",
@@ -94,6 +110,8 @@ export const STRINGS = {
 			`Pushing your notes to DM Kit, please hold… ${done} of ${total} sent.`,
 		remove: (done: number, total: number) =>
 			`Removing notes you unselected from DM Kit… ${done} of ${total} done.`,
+		wait: (seconds: number) =>
+			`DM Kit asked us to slow down. Resuming in ${seconds} ${seconds === 1 ? "second" : "seconds"}, your notes are safe…`,
 		finish:
 			"Confirming everything arrived in DM Kit, almost done. Please keep Obsidian open…",
 	},
@@ -126,6 +144,8 @@ export const STRINGS = {
 		allowance_exhausted: "Over your DM Kit plan limits",
 		in_progress: "Still being indexed in DM Kit",
 		too_large: "Larger than 2 MB",
+		upload_failed:
+			"DM Kit couldn't take this note right now. Sync again to retry it",
 	},
 
 	status: {
@@ -145,6 +165,7 @@ export const STRINGS = {
 			running: "DM Kit: syncing…",
 			error: "DM Kit: sync problem",
 			disconnected: "DM Kit: not connected",
+			openSettings: "Open DM Kit Sync settings",
 		},
 	},
 

@@ -40,6 +40,7 @@ Run **Review & sync** from the command palette or the ribbon icon. The plugin li
 
 - Markdown notes up to 2 MB each, up to 2000 selected notes per sync.
 - Your DM Kit storage allowance applies to synced notes.
+- Large vaults sync in small batches with automatic retries. A note the server keeps rejecting is skipped and reported, and the rest still syncs.
 
 ## Development
 

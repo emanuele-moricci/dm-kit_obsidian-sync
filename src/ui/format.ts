@@ -1,4 +1,4 @@
-const KILOBYTE = 1024;
+const KILOBYTE = 1000;
 const UNITS = ["B", "KB", "MB", "GB"] as const;
 const SECOND = 1000;
 const MINUTE = 60;

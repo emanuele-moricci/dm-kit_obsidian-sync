@@ -22,11 +22,24 @@ export default class DmKitSyncPlugin extends Plugin {
 	async onload() {
 		this.data = normalizeData(await this.loadData());
 		this.statusBar = this.addStatusBarItem();
+		this.statusBar.addClass("mod-clickable");
+		this.statusBar.setAttr("role", "button");
+		this.statusBar.setAttr("tabindex", "0");
+		this.statusBar.setAttr("aria-label", STRINGS.status.bar.openSettings);
+		this.registerDomEvent(this.statusBar, "click", () => this.openSettings());
+		this.registerDomEvent(this.statusBar, "keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				this.openSettings();
+			}
+		});
 		this.refreshStatusBar();
 		this.registerInterval(
 			window.setInterval(() => this.refreshStatusBar(), STATUS_REFRESH_MS),
 		);
-		this.addRibbonIcon("refresh-cw", STRINGS.ribbonTitle, () => this.review());
+		this.addRibbonIcon("cloud-upload", STRINGS.ribbonTitle, () =>
+			this.review(),
+		);
 		this.addCommand({
 			id: "review-and-sync",
 			name: STRINGS.commandReview,
@@ -43,6 +56,10 @@ export default class DmKitSyncPlugin extends Plugin {
 				vault: createVaultPort(this.app),
 				persist: () => this.persist(),
 				refreshStatusBar: () => this.refreshStatusBar(),
+				startSync: () => {
+					this.settingsApi().close();
+					this.review();
+				},
 			}),
 		);
 	}
@@ -65,16 +82,26 @@ export default class DmKitSyncPlugin extends Plugin {
 				this.busy = busy;
 				this.refreshStatusBar();
 			},
-			openSettings: () => {
-				const setting = (
-					this.app as unknown as {
-						setting: { open: () => void; openTabById: (id: string) => void };
-					}
-				).setting;
-				setting.open();
-				setting.openTabById(this.manifest.id);
-			},
+			openSettings: () => this.openSettings(),
 		};
+	}
+
+	private openSettings() {
+		const setting = this.settingsApi();
+		setting.open();
+		setting.openTabById(this.manifest.id);
+	}
+
+	private settingsApi() {
+		return (
+			this.app as unknown as {
+				setting: {
+					open: () => void;
+					close: () => void;
+					openTabById: (id: string) => void;
+				};
+			}
+		).setting;
 	}
 
 	private review() {

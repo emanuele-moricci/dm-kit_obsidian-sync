@@ -98,3 +98,79 @@
 .dmk-sync-capacity.is-full .dmk-sync-capacity-fill {
 	background: var(--text-error);
 }
+
+.dmk-sync-progress {
+	position: relative;
+	height: 8px;
+	margin-block: var(--size-4-3);
+	overflow: hidden;
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+}
+
+.dmk-sync-progress-fill {
+	height: 100%;
+	background: var(--interactive-accent);
+	border-radius: 4px;
+	transition: width 400ms ease-out;
+}
+
+.dmk-sync-progress.is-indeterminate .dmk-sync-progress-fill {
+	width: 40%;
+	animation: dmk-sync-progress-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes dmk-sync-progress-slide {
+	0% {
+		transform: translateX(-100%);
+	}
+
+	100% {
+		transform: translateX(260%);
+	}
+}
+
+.dmk-sync-loading::before {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-right: var(--size-2-3);
+	vertical-align: -0.15em;
+	content: "";
+	border: 2px solid currentcolor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: dmk-sync-spin 0.8s linear infinite;
+}
+
+@keyframes dmk-sync-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.modal-button-container .dmk-sync-settings-link {
+	margin-right: auto;
+	color: var(--text-muted);
+	background: transparent;
+	box-shadow: none;
+}
+
+.modal-button-container .dmk-sync-settings-link:hover {
+	color: var(--text-normal);
+	text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dmk-sync-loading::before {
+		animation-duration: 2.4s;
+	}
+
+	.dmk-sync-progress-fill {
+		transition: none;
+	}
+
+	.dmk-sync-progress.is-indeterminate .dmk-sync-progress-fill {
+		animation: none;
+	}
+}

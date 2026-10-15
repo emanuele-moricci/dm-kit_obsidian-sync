@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
 	MAX_MANIFEST_ENTRIES,
-	MAX_PUSH_FILES,
 	MAX_REMOVE_PATHS,
+	PUSH_BATCH_FILES,
 } from "../../contract/limits";
 import { SyncClient } from "../client";
 import { SyncRunner } from "../runner";
@@ -35,7 +35,17 @@ function setup(contents: Record<string, string>, plan = {}) {
 		pluginVersion: "0.1.0",
 		transport: server.transport,
 	});
-	return { server, vault, runner: new SyncRunner({ client, vault }) };
+	const sleeps: number[] = [];
+	const sleep = (ms: number) => {
+		sleeps.push(ms);
+		return Promise.resolve();
+	};
+	return {
+		server,
+		vault,
+		sleeps,
+		runner: new SyncRunner({ client, vault, sleep }),
+	};
 }
 
 function filesOf(vault: VaultPort): VaultFile[] {
@@ -67,9 +77,9 @@ describe("SyncRunner", () => {
 		expect(plan.manifest[0]?.sha256).toMatch(SHA_PATTERN);
 	});
 
-	test("splits pushes into batches of at most 50 files", async () => {
+	test("splits pushes into small batches of files", async () => {
 		const contents: Record<string, string> = {};
-		for (let index = 0; index < MAX_PUSH_FILES + 5; index++) {
+		for (let index = 0; index < PUSH_BATCH_FILES + 5; index++) {
 			contents[`n${index}.md`] = `note ${index}`;
 		}
 		const { server, vault, runner } = setup(contents);
@@ -80,7 +90,7 @@ describe("SyncRunner", () => {
 		const outcome = await runner.execute(prepared.value, approve);
 		const pushes = server.state.calls.filter((call) => call.route === "push");
 		expect(pushes).toHaveLength(2);
-		expect(outcome.pushed).toBe(MAX_PUSH_FILES + 5);
+		expect(outcome.pushed).toBe(PUSH_BATCH_FILES + 5);
 	});
 
 	test("keeps removals pending when not approved and reports it", async () => {
@@ -145,7 +155,7 @@ describe("SyncRunner", () => {
 		expect(outcome.removed).toBe(MAX_REMOVE_PATHS + 20);
 	});
 
-	test("a failed push stops the run, skips removals and finishes as incomplete", async () => {
+	test("a push that keeps being rate limited stops the run, skips removals and finishes as incomplete", async () => {
 		const { server, vault, runner } = setup(
 			{ "a.md": "# A" },
 			{ remove: ["old.md"] },
@@ -292,5 +302,176 @@ describe("SyncRunner", () => {
 		const prepared = await runner.prepare(filesOf(vault));
 		expect(prepared).toEqual({ ok: false, error: { code: "too_many_files" } });
 		expect(server.state.calls).toEqual([]);
+	});
+	test("a transient push error is retried and the sync still completes", async () => {
+		const { server, vault, runner, sleeps } = setup({
+			"a.md": "# A",
+			"b.md": "# B",
+		});
+		let failures = 2;
+		server.state.pushHandler = (body) => {
+			if (failures > 0) {
+				failures -= 1;
+				return errorResponse("server_error", 500);
+			}
+			return jsonResponse({
+				results: body.files.map((file) => ({
+					path: file.path,
+					status: "accepted",
+				})),
+			});
+		};
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(prepared.value, approve);
+		expect(outcome.pushed).toBe(2);
+		expect(outcome.fatal).toBeNull();
+		expect(outcome.rejected).toEqual([]);
+		expect(sleeps.length).toBe(2);
+	});
+
+	test("a rate limit waits for the server hint and then continues", async () => {
+		const { server, vault, runner, sleeps } = setup({ "a.md": "# A" });
+		let limited = true;
+		server.state.pushHandler = (body) => {
+			if (limited) {
+				limited = false;
+				return errorResponse("rate_limited", 429, { retryAfterSeconds: 7 });
+			}
+			return jsonResponse({
+				results: body.files.map((file) => ({
+					path: file.path,
+					status: "accepted",
+				})),
+			});
+		};
+		const waits: number[] = [];
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(
+			prepared.value,
+			approve,
+			(progress) => {
+				if (progress.phase === "wait") {
+					waits.push(progress.waitSeconds ?? 0);
+				}
+			},
+		);
+		expect(outcome.pushed).toBe(1);
+		expect(sleeps).toEqual([7000]);
+		expect(waits).toEqual([7]);
+	});
+
+	test("a rate limit asking for a very long wait stops instead of freezing", async () => {
+		const { server, vault, runner, sleeps } = setup({ "a.md": "# A" });
+		server.state.failRoute = {
+			route: "push",
+			response: errorResponse("rate_limited", 429, { retryAfterSeconds: 900 }),
+		};
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(prepared.value, approve);
+		expect(outcome.fatal?.code).toBe("rate_limited");
+		expect(sleeps).toEqual([]);
+	});
+
+	test("one note the server cannot take is isolated and the rest of a big batch still lands", async () => {
+		const contents: Record<string, string> = {};
+		for (let index = 0; index < 40; index++) {
+			contents[`n${index}.md`] = `note ${index}`;
+		}
+		const { server, vault, runner } = setup(contents);
+		server.state.pushHandler = (body) => {
+			if (body.files.some((file) => file.path === "n7.md")) {
+				return errorResponse("server_error", 500);
+			}
+			return jsonResponse({
+				results: body.files.map((file) => ({
+					path: file.path,
+					status: "accepted",
+				})),
+			});
+		};
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(prepared.value, approve);
+		expect(outcome.fatal).toBeNull();
+		expect(outcome.pushed).toBe(39);
+		expect(outcome.rejected).toEqual([
+			{ path: "n7.md", code: "upload_failed" },
+		]);
+		expect(outcome.finishError).toBe("push_incomplete");
+	});
+
+	test("a server that fails everything stops once too many notes were dropped", async () => {
+		const contents: Record<string, string> = {};
+		for (let index = 0; index < 30; index++) {
+			contents[`n${index}.md`] = `note ${index}`;
+		}
+		const { server, vault, runner } = setup(contents);
+		server.state.failRoute = {
+			route: "push",
+			response: errorResponse("server_error", 500),
+		};
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(prepared.value, approve);
+		expect(outcome.incomplete).toBe(true);
+		expect(outcome.fatal?.code).toBe("server_error");
+		expect(outcome.rejected.length).toBeLessThanOrEqual(5);
+	});
+
+	test("a dropped connection retries and then stops without splitting the batch", async () => {
+		const server = createFakeServer();
+		let pushes = 0;
+		const vault = makeVault({ "a.md": "# A", "b.md": "# B" });
+		const client = new SyncClient({
+			baseUrl: "https://dm.convex.site",
+			key: "dmk_secret",
+			pluginVersion: "0.1.0",
+			transport: (request) => {
+				if (request.url.endsWith("/push")) {
+					pushes += 1;
+					return Promise.reject(new Error("offline"));
+				}
+				return server.transport(request);
+			},
+		});
+		const runner = new SyncRunner({
+			client,
+			vault,
+			sleep: () => Promise.resolve(),
+		});
+		const prepared = await runner.prepare(filesOf(vault));
+		if (!prepared.ok) {
+			throw new Error("prepare failed");
+		}
+		const outcome = await runner.execute(prepared.value, approve);
+		expect(outcome.incomplete).toBe(true);
+		expect(outcome.fatal?.code).toBe("network");
+		expect(pushes).toBe(4);
+	});
+
+	test("a failing plan call is retried before giving up", async () => {
+		const { server, vault, runner } = setup({ "a.md": "# A" });
+		server.state.failRoute = {
+			route: "plan",
+			response: errorResponse("server_error", 500),
+		};
+		const prepared = await runner.prepare(filesOf(vault));
+		expect(prepared.ok).toBe(false);
+		expect(
+			server.state.calls.filter((call) => call.route === "plan").length,
+		).toBe(4);
 	});
 });

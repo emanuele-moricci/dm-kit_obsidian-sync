@@ -1,4 +1,10 @@
-import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
+import {
+	type App,
+	type ButtonComponent,
+	Notice,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
 import { writeKey } from "../adapters";
 import { describeError } from "../errors";
 import { fire } from "../fire";
@@ -16,6 +22,7 @@ export interface SettingsHost extends FlowHost {
 	vault: VaultPort;
 	persist: () => Promise<void>;
 	refreshStatusBar: () => void;
+	startSync: () => void;
 }
 
 interface TabPlugin {
@@ -66,11 +73,20 @@ export class DmKitSettingTab extends PluginSettingTab {
 				button
 					.setButtonText(STRINGS.settings.connect)
 					.setCta()
-					.onClick(() => fire(this.connect(pasted))),
+					.onClick(() => fire(this.connectWithSpinner(button, pasted))),
 			);
 	}
 
 	private renderConnected(parent: HTMLElement, name: string | undefined) {
+		new Setting(parent)
+			.setName(STRINGS.settings.sync)
+			.setDesc(STRINGS.settings.syncDesc)
+			.addButton((button) =>
+				button
+					.setButtonText(STRINGS.settings.sync)
+					.setCta()
+					.onClick(() => this.host.startSync()),
+			);
 		new Setting(parent)
 			.setName(`${STRINGS.settings.connected} ${name ?? STRINGS.pluginName}`)
 			.setDesc(STRINGS.settings.disconnectDesc)
@@ -80,6 +96,17 @@ export class DmKitSettingTab extends PluginSettingTab {
 					.setWarning()
 					.onClick(() => fire(this.disconnect())),
 			);
+	}
+
+	private async connectWithSpinner(button: ButtonComponent, raw: string) {
+		button.setDisabled(true).setButtonText(STRINGS.settings.connecting);
+		button.buttonEl.addClass("dmk-sync-loading");
+		try {
+			await this.connect(raw);
+		} finally {
+			button.setDisabled(false).setButtonText(STRINGS.settings.connect);
+			button.buttonEl.removeClass("dmk-sync-loading");
+		}
 	}
 
 	private async connect(raw: string) {
@@ -131,7 +158,13 @@ export class DmKitSettingTab extends PluginSettingTab {
 		const root = buildTree(files, this.data.selection);
 		parent.createEl("p", {
 			cls: "dmk-sync-muted",
-			text: `${STRINGS.settings.vaultTotal}: ${root.count} · ${formatBytes(root.bytes)} — ${root.selectedCount} ${STRINGS.settings.selected}`,
+			text: STRINGS.settings.summary(
+				{ notes: root.count, bytes: formatBytes(root.bytes) },
+				{
+					notes: root.selectedCount,
+					bytes: formatBytes(root.selectedBytes),
+				},
+			),
 		});
 		const holder = parent.createDiv();
 		this.renderTreeInto(holder, root);

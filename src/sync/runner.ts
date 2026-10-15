@@ -1,13 +1,18 @@
 import {
 	MAX_FILE_BYTES,
-	MAX_PUSH_BYTES,
-	MAX_PUSH_FILES,
 	MAX_REMOVE_PATHS,
+	PUSH_BATCH_BYTES,
+	PUSH_BATCH_FILES,
 } from "../contract/limits";
-import type { FinishErrorCode, PushFile } from "../contract/types";
+import type {
+	FinishErrorCode,
+	PushFile,
+	PushResponse,
+} from "../contract/types";
 import type { SyncClient } from "./client";
 import { byteLength, sha256Hex } from "./hash";
 import { buildManifest } from "./manifest";
+import { callWithRetry, defaultSleep, type RetryHooks } from "./retry";
 import type {
 	ClientError,
 	ClientResult,
@@ -33,12 +38,20 @@ export type PrepareResult =
 export interface SyncRunnerDeps {
 	client: SyncClient;
 	vault: VaultPort;
+	sleep?: (ms: number) => Promise<void>;
 }
 
 const FINISH_ATTEMPTS = 2;
+const MAX_FAILED_UPLOADS = 5;
+const SPLITTABLE_CODES: ReadonlySet<string> = new Set([
+	"server_error",
+	"invalid_response",
+	"payload_too_large",
+]);
 const TRANSIENT_REJECTIONS: ReadonlySet<string> = new Set([
 	"allowance_exhausted",
 	"hash_mismatch",
+	"upload_failed",
 ]);
 
 interface PendingFile {
@@ -78,9 +91,14 @@ function chunk<Item>(items: readonly Item[], size: number): Item[][] {
 
 export class SyncRunner {
 	private readonly deps: SyncRunnerDeps;
+	private failedUploads = 0;
 
 	constructor(deps: SyncRunnerDeps) {
 		this.deps = deps;
+	}
+
+	private hooks(onWait?: (seconds: number) => void): RetryHooks {
+		return { sleep: this.deps.sleep ?? defaultSleep, onWait };
 	}
 
 	async prepare(
@@ -97,7 +115,10 @@ export class SyncRunner {
 		if (built.overLimit) {
 			return { ok: false, error: { code: "too_many_files" } };
 		}
-		const plan = await this.deps.client.plan({ manifest: built.entries });
+		const plan = await callWithRetry(
+			() => this.deps.client.plan({ manifest: built.entries }),
+			this.hooks(),
+		);
 		if (!plan.ok) {
 			return plan;
 		}
@@ -130,6 +151,7 @@ export class SyncRunner {
 		onProgress?: (progress: ExecuteProgress) => void,
 	): Promise<SyncOutcome> {
 		const outcome = emptyOutcome(prepared);
+		this.failedUploads = 0;
 		const pending = this.pendingFiles(prepared);
 		const pushOk = await this.pushAll(prepared, pending, outcome, onProgress);
 
@@ -209,6 +231,15 @@ export class SyncRunner {
 		let done = 0;
 		let batch: PushedFile[] = [];
 		let batchBytes = 0;
+		const hooks = this.hooks((seconds) =>
+			onProgress?.({
+				phase: "wait",
+				done,
+				total: pending.length,
+				waitSeconds: seconds,
+			}),
+		);
+		onProgress?.({ phase: "push", done, total: pending.length });
 		const flush = async (): Promise<boolean> => {
 			if (batch.length === 0) {
 				return true;
@@ -216,7 +247,7 @@ export class SyncRunner {
 			const current = batch;
 			batch = [];
 			batchBytes = 0;
-			const ok = await this.pushBatch(prepared, current, outcome);
+			const ok = await this.pushBatch(prepared, current, outcome, hooks);
 			done += current.length;
 			onProgress?.({ phase: "push", done, total: pending.length });
 			return ok;
@@ -228,8 +259,8 @@ export class SyncRunner {
 				continue;
 			}
 			if (
-				(batch.length >= MAX_PUSH_FILES ||
-					batchBytes + loaded.bytes > MAX_PUSH_BYTES) &&
+				(batch.length >= PUSH_BATCH_FILES ||
+					batchBytes + loaded.bytes > PUSH_BATCH_BYTES) &&
 				!(await flush())
 			) {
 				return false;
@@ -244,17 +275,74 @@ export class SyncRunner {
 		prepared: PreparedSync,
 		batch: PushedFile[],
 		outcome: SyncOutcome,
+		hooks: RetryHooks,
 	): Promise<boolean> {
-		const response = await this.deps.client.push({
-			runId: prepared.plan.runId,
-			files: batch.map((entry) => entry.file),
-		});
-		if (!response.ok) {
+		const response = await callWithRetry(
+			() =>
+				this.deps.client.push({
+					runId: prepared.plan.runId,
+					files: batch.map((entry) => entry.file),
+				}),
+			hooks,
+		);
+		if (response.ok) {
+			this.recordPushResults(batch, response.value.results, outcome);
+			return true;
+		}
+		if (!SPLITTABLE_CODES.has(response.error.code)) {
 			this.fail(outcome, response);
 			return false;
 		}
+		if (batch.length > 1) {
+			return await this.pushHalves(prepared, batch, outcome, hooks);
+		}
+		return this.dropFile(batch, outcome, response);
+	}
+
+	private async pushHalves(
+		prepared: PreparedSync,
+		batch: PushedFile[],
+		outcome: SyncOutcome,
+		hooks: RetryHooks,
+	): Promise<boolean> {
+		const middle = Math.ceil(batch.length / 2);
+		for (const half of [batch.slice(0, middle), batch.slice(middle)]) {
+			if (!(await this.pushBatch(prepared, half, outcome, hooks))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private dropFile(
+		batch: PushedFile[],
+		outcome: SyncOutcome,
+		response: Extract<ClientResult<unknown>, { ok: false }>,
+	): boolean {
+		const [only] = batch;
+		if (!only) {
+			return true;
+		}
+		if (response.error.code === "payload_too_large") {
+			outcome.rejected.push({ path: only.path, code: "too_large" });
+			return true;
+		}
+		this.failedUploads += 1;
+		if (this.failedUploads > MAX_FAILED_UPLOADS) {
+			this.fail(outcome, response);
+			return false;
+		}
+		outcome.rejected.push({ path: only.path, code: "upload_failed" });
+		return true;
+	}
+
+	private recordPushResults(
+		batch: PushedFile[],
+		results: PushResponse["results"],
+		outcome: SyncOutcome,
+	) {
 		const kinds = new Map(batch.map((entry) => [entry.path, entry.kind]));
-		for (const result of response.value.results) {
+		for (const result of results) {
 			if (result.status === "accepted") {
 				const kind = kinds.get(result.path);
 				if (kind === "update") {
@@ -271,7 +359,6 @@ export class SyncRunner {
 				});
 			}
 		}
-		return true;
 	}
 
 	private async removeAll(
@@ -290,11 +377,22 @@ export class SyncRunner {
 		}
 		let done = 0;
 		for (const paths of chunk(plan.remove, MAX_REMOVE_PATHS)) {
-			const response = await this.deps.client.remove({
-				runId: plan.runId,
-				paths,
-				confirmMass: plan.massRemove ? true : undefined,
-			});
+			const response = await callWithRetry(
+				() =>
+					this.deps.client.remove({
+						runId: plan.runId,
+						paths,
+						confirmMass: plan.massRemove ? true : undefined,
+					}),
+				this.hooks((seconds) =>
+					onProgress?.({
+						phase: "wait",
+						done,
+						total: plan.remove.length,
+						waitSeconds: seconds,
+					}),
+				),
+			);
 			if (!response.ok) {
 				this.fail(outcome, response);
 				return;
@@ -324,6 +422,9 @@ export class SyncRunner {
 				outcome.fatal?.code === "unauthorized"
 				? null
 				: "push_incomplete";
+		}
+		if (outcome.rejected.some((entry) => entry.code === "upload_failed")) {
+			return "push_incomplete";
 		}
 		if (outcome.removalSkipped) {
 			return "remove_not_confirmed";

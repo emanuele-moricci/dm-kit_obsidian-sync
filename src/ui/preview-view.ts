@@ -66,17 +66,11 @@ export function renderPreview(
 		text: STRINGS.preview.campaign(plan.campaign.name),
 		cls: "dmk-sync-campaign",
 	});
-	const counts = parent.createEl("ul", { cls: "dmk-sync-counts" });
-	const rows: [string, number][] = [
-		[STRINGS.preview.add, plan.add.length],
-		[STRINGS.preview.update, plan.update.length],
-		[STRINGS.preview.retry, plan.retry.length],
-		[STRINGS.preview.unchanged, plan.unchangedCount],
-	];
-	for (const [label, value] of rows) {
-		if (value > 0) {
-			counts.createEl("li", { text: `${label}: ${value}` });
-		}
+	if (plan.unchangedCount > 0) {
+		parent.createEl("p", {
+			text: `${STRINGS.preview.unchanged}: ${plan.unchangedCount}`,
+			cls: "dmk-sync-muted",
+		});
 	}
 	renderList(parent, STRINGS.preview.add, plan.add);
 	renderList(parent, STRINGS.preview.update, plan.update);

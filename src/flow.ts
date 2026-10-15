@@ -6,6 +6,11 @@ import { fire } from "./fire";
 import type { LastSync, PluginData } from "./state";
 import { STRINGS } from "./strings";
 import { SyncClient } from "./sync/client";
+import {
+	executeProgress,
+	prepareProgress,
+	startProgress,
+} from "./sync/progress";
 import { SyncRunner } from "./sync/runner";
 import { selectedFiles } from "./sync/tree";
 import type { PreparedSync } from "./sync/types";
@@ -96,7 +101,11 @@ class ReviewSession {
 	private async start() {
 		this.host.setBusy(true);
 		this.preparing = true;
-		this.modal.show({ kind: "loading", message: STRINGS.preview.preparing });
+		this.modal.show({
+			kind: "loading",
+			message: STRINGS.preview.preparing,
+			progress: prepareProgress({ done: 0, total: 1 }),
+		});
 		const files = selectedFiles(
 			createVaultPort(this.host.app).listMarkdown(),
 			this.host.data.selection,
@@ -104,7 +113,11 @@ class ReviewSession {
 		const prepared = await this.runner.prepare(files, (progress) =>
 			this.modal.show({
 				kind: "loading",
-				message: `${STRINGS.preview.preparing} ${progress.done}/${progress.total}`,
+				message:
+					progress.done >= progress.total
+						? STRINGS.preview.contacting
+						: `${STRINGS.preview.preparing} ${progress.done}/${progress.total}`,
+				progress: prepareProgress(progress),
 			}),
 		);
 		this.preparing = false;
@@ -143,7 +156,11 @@ class ReviewSession {
 			}
 		}
 		this.running = true;
-		this.modal.show({ kind: "running", message: STRINGS.progress.start });
+		this.modal.show({
+			kind: "running",
+			message: STRINGS.progress.start,
+			progress: startProgress(),
+		});
 		const outcome = await this.runner.execute(
 			prepared,
 			{ approveRemovals, confirmMass },
@@ -151,6 +168,7 @@ class ReviewSession {
 				this.modal.show({
 					kind: "running",
 					message: progressMessage(progress),
+					progress: executeProgress(progress),
 				}),
 		);
 		this.running = false;
