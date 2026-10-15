@@ -25,6 +25,7 @@ const KNOWN_API_CODES: readonly ApiErrorCode[] = [
 	"unauthorized",
 	"forbidden",
 	"campaign_archived",
+	"campaign_read_only",
 	"run_conflict",
 	"run_expired",
 	"rate_limited",

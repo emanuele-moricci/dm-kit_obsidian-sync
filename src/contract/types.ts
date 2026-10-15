@@ -27,6 +27,7 @@ export type ApiErrorCode =
 	| "unauthorized"
 	| "forbidden"
 	| "campaign_archived"
+	| "campaign_read_only"
 	| "run_conflict"
 	| "run_expired"
 	| "rate_limited"

@@ -172,6 +172,8 @@ export const STRINGS = {
 			"This connection isn't allowed to sync. Create a new connection string in DM Kit.",
 		campaign_archived:
 			"This campaign is archived in DM Kit, so syncing is paused. Unarchive it in DM Kit or connect another campaign.",
+		campaign_read_only:
+			"This campaign is read-only on your current DM Kit plan, so syncing is paused. Choose it as your editable campaign in DM Kit or connect another campaign.",
 		run_conflict:
 			"Another sync is running for this connection, maybe from another device. Try again in a few minutes.",
 		run_expired: "The sync took too long and expired. Run it again.",

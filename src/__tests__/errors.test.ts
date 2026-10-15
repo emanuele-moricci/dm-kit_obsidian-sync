@@ -22,6 +22,15 @@ describe("describeError", () => {
 		expect(described.action).toBe("retry");
 	});
 
+	test("a read-only campaign explains how to resume syncing", () => {
+		const described = describeError({
+			code: "campaign_read_only",
+			status: 403,
+		});
+		expect(described.message).toContain("read-only");
+		expect(described.action).toBe("retry");
+	});
+
 	test("upgrade names the minimum version", () => {
 		const described = describeError({
 			code: "upgrade_required",

@@ -1,7 +1,7 @@
 {
   "id": "dm-kit-sync",
   "name": "DM Kit Sync",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minAppVersion": "1.11.4",
   "description": "Send selected notes to DM Kit so your campaign tools and Lorekeeper can use them.",
   "author": "DM Kit",

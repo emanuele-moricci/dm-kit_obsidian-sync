@@ -62,6 +62,8 @@ export function describeError(error: DescribableError): DescribedError {
 				: { message: text.invalid_request, action: "update_plugin" };
 		case "campaign_archived":
 			return { message: text.campaign_archived, action: "retry" };
+		case "campaign_read_only":
+			return { message: text.campaign_read_only, action: "retry" };
 		case "run_conflict":
 		case "run_expired":
 		case "server_error":
